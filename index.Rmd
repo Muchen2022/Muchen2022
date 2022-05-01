@@ -1,0 +1,415 @@
+---
+title: "PSY6422 Final Project- COVID-19 Deaths in the UK in 2021"
+author: "Mc.N"
+date: "2022/4/25"
+output:
+  html_document:
+    toc: yes
+    toc_depth: '3'
+    df_print: paged
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+    number_sections: yes
+---
+
+\newpage
+# Introduction
+
+It has been more than two years since the first confirmed case of the COVID-19 virus was detected. We have paid a terrible price in money, resources, freedom and countless lives. The global health system and governments have been greatly challenged during this time. Although we are not confident that COVID-19 has been wholly conquered, things are looking up. The project aims to visualize what we will lose in 2021. We are reminded that what we have achieved so far is precious. 
+
+The project uses data from the [*__Office for National Statistics__*](https://www.ons.gov.uk/peoplepopulationandcommunity/birthsdeathsandmarriages/deaths/datasets/weeklyprovisionalfiguresondeathsregisteredinenglandandwales) website on the number of deaths registered weekly in England and Wales 2021 edition.The dataset was updated weekly during the pandemic and was counted whenever COVID-19 was mentioned or suspected in a death certificate.The number of deaths and age groupings from 52 weeks in 2021 were used.
+
+\pagebreak
+
+\newpage
+# Data Visualization
+
+## Check packages
+
+In this visualization project, I use the following packages, the *"require"* and *"if"* function to help us check if it is installed.
+
+```{r eval=FALSE}
+# For Example 
+if(!require("openxlsx")) install.packages("openxlsx")
+library(openxlsx)
+```
+
+
+```{r Package Check, include=FALSE}
+if(!require("openxlsx")) install.packages("openxlsx")
+library(openxlsx)
+
+if(!require("tidyverse")) install.packages("tidyverse")
+library(tidyverse)
+
+if(!require("here")) install.packages("here")
+library(here)
+
+if(!require("grid")) install.packages("grid")
+library(grid)
+
+if(!require("gridExtra")) install.packages("gridExtra")
+library(gridExtra)
+
+if(!require("ggpubr")) install.packages("ggpubr")
+library(ggpubr)
+
+
+if(!require("ggmap")) install.packages("ggmap")
+library(ggmap)
+
+```
+
+## Visualization 1 --- Weekly Deaths in 2021
+
+I'll go into more detail about how I process the data and chart it, but I'll skip the repetitions.
+Read raw data from the /Raw_Data folder. The worksheet we use in this section is sheet 9.
+
+```{r Import Raw Data 1st}
+data1 <- read.xlsx(here("Raw_Data/publishedweek522021.xlsx"), sheet = 9)
+
+head(data1,2)
+
+```
+
+The content of this worksheet is weekly provisional figures on deaths registered where COVID-19 was mentioned on the death certificate in England and Wales. It contains too much information, and the data set is not in the right format for R to plot. So we need to select and preprocess the data in the worksheet.
+
+In this section, we are only interested in weeks and total weekly deaths, so only rows 2 and 4 of the worksheet are selected for visualization.
+```{r Data Pre-processing 1st}
+Weekly_Death <- slice(data1,2L,4L)
+```
+
+
+This data is not directly used to draw a bar chart. So there are operations to be performed on the data set, such as removing empty values, transposing, and changing data type.
+
+```{r echo=TRUE}
+rownames(Weekly_Death)=Weekly_Death[,1] 
+Weekly_Death=Weekly_Death[,-1]
+
+# Transposing
+Weekly_Death <-t(Weekly_Death)
+# Changing data type
+Weekly_Death <-as.data.frame(Weekly_Death)
+# Removing empty values
+Weekly_Death<- na.omit(Weekly_Death)
+
+colnames(Weekly_Death)
+# Rename
+names(Weekly_Death)[names(Weekly_Death) =="Week number"] <-"Week"
+
+names(Weekly_Death)[names(Weekly_Death) =="UK deaths involving COVID-19 7"] <-"Deaths"
+
+
+Weekly_Death = as.data.frame(lapply(Weekly_Death,as.numeric))
+
+```
+
+```{r}
+head(Weekly_Death,3)
+```
+
+This set of data becomes concise and can be used to plot. Use ggplot2 to plot a bar graph with _Week number_ on the horizontal and _Deaths_ on the vertical. Use *"fill" =* to control the fill color and *"color ="* to control the border color.
+
+```{r}
+p1 <- ggplot(Weekly_Death,aes(x=Week, y=Deaths))+
+  
+  geom_bar(stat='identity',fill="red", colour="black")+
+  
+#add a title for the figure.
+  ggtitle("UK Weekly Deaths Involving COVID-19 in 2021") +
+  
+  theme(plot.title = element_text(size = 12, face = "bold", hjust = 0.5))
+
+plot(p1)
+```
+\pagebreak
+
+
+## Visualization 2 --- Weekly Deaths Grouping by Age
+
+In Visualization 2, I want to show death in different age groups. By grouping by age, we can find out which age groups are at greater risk when facing COVID-19.
+
+```{r echo=FALSE}
+AgeGroup_Deaths <- slice(data1,2L,13L,14L,15L,16L,17L,18L,19L)
+
+AgeGroup_Deaths <- slice(data1,2L,13L,14L,15L,16L,17L,18L,19L)
+AgeGroup_Deaths <- AgeGroup_Deaths[,-1]
+AgeGroup_Deaths[is.na(AgeGroup_Deaths)]<-"Week"
+rownames(AgeGroup_Deaths)=AgeGroup_Deaths[,1] 
+AgeGroup_Deaths <- AgeGroup_Deaths[,-1]
+AgeGroup_Deaths <- t(AgeGroup_Deaths)
+AgeGroup_Deaths <-as.data.frame(AgeGroup_Deaths)
+
+AgeGroup_Deaths = as.data.frame(lapply(AgeGroup_Deaths,as.numeric))
+
+
+colnames(AgeGroup_Deaths)
+names(AgeGroup_Deaths)[names(AgeGroup_Deaths) =="Under.1.year"] <-"< 1"
+names(AgeGroup_Deaths)[names(AgeGroup_Deaths) =="X01.14"] <-"1-14"
+names(AgeGroup_Deaths)[names(AgeGroup_Deaths) =="X15.44"] <-"15-44"
+names(AgeGroup_Deaths)[names(AgeGroup_Deaths) =="X45.64"] <-"45-64"
+names(AgeGroup_Deaths)[names(AgeGroup_Deaths) =="X65.74"] <-"65-74"
+names(AgeGroup_Deaths)[names(AgeGroup_Deaths) =="X75.84"] <-"75-84"
+names(AgeGroup_Deaths)[names(AgeGroup_Deaths) =="X85."] <-"> 85"
+
+AgeGroup_Deaths$"0-14" <- rowSums(AgeGroup_Deaths[,c(2,3)])
+AgeGroup_Deaths$"> 65" <- rowSums(AgeGroup_Deaths[,c(6:8)])
+
+AgeGroup_Deaths <- AgeGroup_Deaths[,c(-2:-3,-6:-8)]
+
+AgeGroup_Deaths <- AgeGroup_Deaths[,c("Week","0-14","15-44","45-64","> 65")]
+
+AgeGroup_Deaths<- read.xlsx(here("Raw_Data/AgeGroup_Deaths.xlsx"), sheet = 1)
+AgeGroup_Deaths <- AgeGroup_Deaths[,-1]
+
+```
+
+Like Visualization 1, the raw data needs some tweaking before it can be used for plotting. The difference is that **Age** will be saved as a variable.
+
+```{r}
+head(AgeGroup_Deaths)
+```
+
+*"fill ="* and *"position = 'stack'"* enable the bar chart to be stacked vertically grouped by age.
+
+```{r}
+p2 <- ggplot(data = AgeGroup_Deaths, 
+             mapping = aes(
+               x =Week, 
+               y= Deaths, 
+               fill = Age.Group))+
+  geom_bar(stat = 'identity', position = 'stack')+
+  
+  ggtitle("Deaths Involving COVID-19 Grouping by Age") +
+  
+  theme(plot.title = element_text(size = 12, face = "bold", hjust = 0.5))
+
+plot(p2)
+```
+
+
+\newpage
+
+### Pie Chart 
+
+In addition to the bar chart, we can also use *pie charts* to show the proportion between different age groups.*"ggplot2" package* does not include a function to draw a pie chart directly. So I did it by drawing a vertical stacked bar and polar transformation.
+
+```{r include=FALSE}
+Age_Group_sum <- 
+  aggregate(AgeGroup_Deaths$Deaths, by=list(Age.Group=AgeGroup_Deaths$Age.Group),sum)
+
+colnames(Age_Group_sum)
+names(Age_Group_sum)[names(Age_Group_sum) =="Age.Group"] <-"Group"
+names(Age_Group_sum)[names(Age_Group_sum) =="x"] <-"Deaths"
+
+type <- c('15-44','45-64','> 65')
+nums <- c(1588,11234,71185)
+Pie_Data_Set <- data.frame(Age_Group = type, nums = nums)
+
+# Get the percentages of each group and edit the labels
+label_value <- paste('(', round(Pie_Data_Set$nums/sum(Pie_Data_Set$nums) * 100, 1), '%)', sep = '')
+label <- c("> 65: 84.7%","15-44: 1.9%","45-64: 13.4%")
+```
+
+After renaming, summing and transpose, a data set suitable for plotting pie charts is obtained.
+
+```{r echo=FALSE}
+head (Pie_Data_Set)
+```
+
+The first step is to draw a vertical stacked bar chart. The most critical of these is the adjustment of the **"width"** parameter, which is set to **1** to make the pie chart a solid circle.
+
+```{r}
+
+p4_1 <- ggplot(data = Pie_Data_Set, mapping = aes(x = ' ', y = nums, fill = type)) + 
+  geom_bar(stat = 'identity', position = 'stack', width = 1)
+
+plot(p4_1)
+```
+\pagebreak
+
+\newpage
+The next step is to do the polar transformation and remove the superfluous elements.
+
+```{r}
+p4_1 <- p4_1 +
+  coord_polar(theta = 'y') +
+  labs(x = '', y = '', title = '')+
+  
+  # Remove unnecessary elements and add labels.
+  theme(axis.text = element_blank())+ 
+  theme(axis.ticks = element_blank())+
+  
+  # Add new labels
+  scale_fill_discrete(labels = label)+
+  ggtitle("A Pie Figure for Deaths Involving COVID-19 Grouping by Age") +
+  theme(plot.title = element_text(size = 12, face = "bold", hjust = 0.5))
+
+plot(p4_1)
+```
+
+\pagebreak
+
+
+## Visualization 3 --- Excess Deaths Group by Place of Occurrence
+
+The website that published the raw data counted the number of excess deaths per week in 2021 compared to the previous five years. Excess deaths partly reflect the impact on the health of citizens and the health system at different levels.
+
+```{r}
+data2<- read.xlsx(here("Raw_Data/publishedweek522021.xlsx"), sheet = 14)
+```
+
+```{r include=FALSE}
+Excess_Deaths <-  slice(data2,3L,47L:98L)
+colnames(Excess_Deaths)=Excess_Deaths[1,]
+Excess_Deaths <- Excess_Deaths[-1,]
+
+names(Excess_Deaths)[6] <-"Home"
+names(Excess_Deaths)[10] <-"Hospital"
+names(Excess_Deaths)[14] <-"CareHome"
+names(Excess_Deaths)[18] <-"Other"
+Excess_Deaths$"Week" <- (1:52)
+Excess_Deaths <- Excess_Deaths[,c(-1:-5,-7:-9,-11:-13,-15:-17)]
+Excess_Deaths = as.data.frame(lapply(Excess_Deaths,as.numeric))
+
+```
+
+```{r Sum, echo=FALSE}
+Excess_Deaths$"InTotal" <- rowSums(Excess_Deaths[,c(1:4)])
+
+head(Excess_Deaths)
+```
+
+After exactly the same data processing as before, the data set can be used to draw line charts. Use the code that draws one of these diagrams as an example.I control the scope of the coordinate system  by using *scale_y_continuous* and *scale_x_continuous*, so that each condition can be seen in the same frame of reference.In addition, by using hexadecimal color codes, we can give the statistical graph rich colors.
+
+```{r}
+p3_1 <- ggplot(data = Excess_Deaths, mapping = aes(x = Week, y = Home))+
+  xlab("Week Number") + 
+  theme(axis.title.x = element_text(size = 11, face = "bold"))+
+  ylab("Home")+ 
+  theme(axis.title.y = element_text(size = 11, face = "bold", vjust = 0.5, hjust = 0.5))+
+  #and "scale_ _continuous" to control the scope of the axes 
+  scale_y_continuous(limits = c(-1500,3500))+
+  scale_x_continuous(limits = c(0,52))+
+  #Color" and "fill" define the color of the line and point.
+  geom_line(size = 2, color = "#0066CC", alpha = 0.2)+
+  geom_point(shape = 20, size = 2, color = "#0066CC",fill = "#0066CC", stroke = 1 )
+
+plot(p3_1)
+```
+
+```{r include=FALSE}
+p3_2 <- ggplot(data = Excess_Deaths, mapping = aes(x = Week, y = Hospital))+
+  xlab("Week Number") + 
+  theme(axis.title.x = element_text(size = 11, face = "bold"))+
+  ylab("Hospital")+ 
+  theme(axis.title.y = element_text(size = 11, face = "bold", vjust = 0.5, hjust = 0.5))+
+  scale_y_continuous(limits = c(-1500,3500))+
+  scale_x_continuous(limits = c(0,52))+
+  geom_line(size = 2, color = "#CC0000", alpha = 0.2)+
+  geom_point(shape = 20, size = 2, color = "#CC0000",fill = "#CC0000", stroke = 1 )
+
+plot(p3_2)
+```
+
+```{r include=FALSE}
+p3_3 <- ggplot(data = Excess_Deaths, mapping = aes(x = Week, y = CareHome))+
+  xlab("Week Number") + 
+  theme(axis.title.x = element_text(size = 11, face = "bold"))+
+  ylab("Care Home")+ 
+  theme(axis.title.y = element_text(size = 11, face = "bold", vjust = 0.5, hjust = 0.5))+
+  scale_y_continuous(limits = c(-1500,3500))+
+  scale_x_continuous(limits = c(0,52))+
+  geom_line(size = 2, color = "#006600", alpha = 0.2)+
+  geom_point(shape = 20, size = 2, color = "#006600",fill = "#006600", stroke = 1 )
+
+plot(p3_3)
+```
+
+```{r include=FALSE}
+p3_4 <- ggplot(data = Excess_Deaths, mapping = aes(x = Week, y = Other))+
+  xlab("Week Number") + 
+  theme(axis.title.x = element_text(size = 11, face = "bold"))+
+  ylab(" Other ")+ 
+  theme(axis.title.y = element_text(size = 11, face = "bold", vjust = 0.5, hjust = 0.5))+
+  scale_y_continuous(limits = c(-1500,3500))+
+  scale_x_continuous(limits = c(0,52))+
+  geom_line(size = 2, color = "#660099", alpha = 0.2)+
+  geom_point(shape = 20, size = 2, color = "#660099",fill = "#660099", stroke = 1 )
+
+plot(p3_4)
+```
+
+\newpage
+Finally use *ggarrange package* to combine 4 figures.We can control the number of images on rows and columns using *ncol* and *nrow*.
+
+```{r}
+p3 <- ggarrange(p3_1,p3_2,p3_3,p3_4, ncol= 2, nrow = 2)+
+  
+  ggtitle("The number of excess deaths at different places in the UK in 2021") +
+  
+  theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5))
+
+plot(p3)
+```
+\pagebreak
+
+\newpage
+## Visualization 4 --- Weekly Excess Deaths in 2021 
+
+Plotting a total figure by using the "sum" data.
+
+```{r echo=FALSE}
+p4 <- ggplot(data = Excess_Deaths, mapping = aes(x = Week, y = InTotal))+
+  xlab("Week Number") + 
+  theme(axis.title.x = element_text(size = 11, face = "bold"))+
+  ylab("Excess Deaths in Total")+ 
+  theme(axis.title.y = element_text(size = 11, face = "bold", vjust = 0.5, hjust = 0.5))+
+  scale_x_continuous(limits = c(1,52))+
+  geom_line(size = 2, color = "#333333", alpha = 0.4)+
+  geom_point(shape = 20, size = 2, color = "#000000",fill = "#000000", stroke = 1 )+
+  ggtitle("The number of excess deaths per week in the UK in 2021") +
+  theme(plot.title = element_text(size = 12, face = "bold", hjust = 0.5))
+
+plot(p4)
+
+```
+\pagebreak
+
+# Discussion and Conclusion  
+
+## Discussion of the analysis research
+
+People seem to have forgotten what the world was like without it, and human beings are getting used to COVID-19.
+This data shows us that the situation is getting better. It also shows us how devastating COVID-19 is. Data are cold, but they offer hope and a reminder of how much human sacrifice has been made.
+
+
+
+## Discussion and conclusion of this project
+
+It was only after I had written the basic R file version that I realized that this theme had already appeared in previous assignments. But the good news is that my data is from 2021, and it covers 52 weeks. When choosing a theme, I actually struggled because the data was cruel. Every number is a life. So I take this analysis as seriously as POSSIBLE. In the process of realizing this project, I think I met a lot of difficulties. Raw data doesn't lend itself to plotting directly, so I spend a lot of energy processing it, and it takes up a lot of lines of code. And when checking the results, I also found that the total amount of data was very large, although I only selected part of the data. This reduces the readability of the final result of the visualization. The end results don't look cool, they're a little too easy. This is probably due to my technique, and there are issues I haven't solved in the un-adopted version below.
+
+This visualization project gave me a great sense of achievement. Since I didn't have any Python experience, I was also poor at programming other software such as MATLAB. In the process of implementation, I successfully solved some technical problems by looking for mutual help information on the network. Just like the pie chart above with polar coordinates. I really want to apply what I've learned in this class elsewhere, and I have a lot of confidence now.
+
+
+\newpage
+
+### The Version Not Adopted
+
+For the total excess death line chart, my original version filled the area with positive and negative values. However, because week data is discrete, if the data are divided according to the change of positive and negative values, separated groups will be obtained. This results in a blank fill area when the number of excess deaths in the two weeks is either positive and negative. 
+
+```{r}
+Excess_Deaths$tag <- Excess_Deaths$InTotal >= 0
+
+cat.rle = rle(Excess_Deaths$tag)
+
+Excess_Deaths$group = rep.int(1:length(cat.rle$lengths), times=cat.rle$lengths)
+
+p5_1 <- ggplot(Excess_Deaths, aes(x = Week, y = InTotal, fill = tag, group = group)) + 
+geom_area(alpha = 0.5) + 
+scale_fill_manual(values = c('green','red'), guide = "none"  )
+
+plot(p5_1)
+```
+\pagebreak
